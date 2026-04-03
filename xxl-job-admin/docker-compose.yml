@@ -1,0 +1,73 @@
+# 本地开发环境示例，生产��境请使用 .env 文件或 Docker Secrets 管理敏感配置
+services:
+  postgres:
+    image: postgres:16
+    container_name: xxl-job-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_pwd
+      POSTGRES_DB: xxl_job
+    ports:
+      - "5432:5432"
+    volumes:
+      - ../doc/db/tables_xxl_job.sql:/docker-entrypoint-initdb.d/tables_xxl_job.sql:ro
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      timeout: 20s
+      retries: 10
+    networks:
+      - xxl-job-network
+
+  xxl-job-admin:
+    image: xuxueli/xxl-job-admin:latest
+    # 本地构建时取消注释以下两行，注释上方 image
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
+    container_name: xxl-job-admin
+    environment:
+      # 服务配置
+      XXL_JOB_PORT: 8080
+      XXL_JOB_CONTEXT_PATH: /xxl-job-admin
+      # 数据源配置
+      XXL_JOB_DATASOURCE_URL: jdbc:postgresql://postgres:5432/xxl_job
+      XXL_JOB_DATASOURCE_USERNAME: postgres
+      XXL_JOB_DATASOURCE_PASSWORD: postgres_pwd
+      XXL_JOB_DATASOURCE_DRIVER: org.postgresql.Driver
+      # 连接池配置
+      # XXL_JOB_DATASOURCE_MIN_IDLE: 10
+      # XXL_JOB_DATASOURCE_MAX_POOL_SIZE: 30
+      # XXL_JOB_DATASOURCE_IDLE_TIMEOUT: 30000
+      # XXL_JOB_DATASOURCE_MAX_LIFETIME: 900000
+      # XXL_JOB_DATASOURCE_CONNECTION_TIMEOUT: 10000
+      # 邮件配置
+      # XXL_JOB_MAIL_HOST: smtp.qq.com
+      # XXL_JOB_MAIL_PORT: 25
+      # XXL_JOB_MAIL_USERNAME: xxx@qq.com
+      # XXL_JOB_MAIL_FROM: xxx@qq.com
+      # XXL_JOB_MAIL_PASSWORD: xxx
+      # 业务配置
+      XXL_JOB_ACCESS_TOKEN: default_token
+      # XXL_JOB_TIMEOUT: 3
+      XXL_JOB_I18N: zh_CN
+      # XXL_JOB_TRIGGERPOOL_FAST_MAX: 300
+      # XXL_JOB_TRIGGERPOOL_SLOW_MAX: 200
+      # XXL_JOB_SCHEDULE_BATCHSIZE: 100
+      XXL_JOB_LOG_RETENTION_DAYS: 30
+      # JVM 参数（可选）
+      # JAVA_OPTS: "-Xms256m -Xmx512m"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - xxl-job-network
+
+volumes:
+  postgres_data:
+
+networks:
+  xxl-job-network:
+    driver: bridge
